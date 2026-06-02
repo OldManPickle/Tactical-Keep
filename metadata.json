@@ -1,0 +1,6 @@
+{
+  "name": "Eisenhower Matrix To-Do",
+  "description": "Tactical to-do and task manager with an Eisenhower Matrix, distraction-free entry, weekly calendar scheduling, and habit achievements.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
