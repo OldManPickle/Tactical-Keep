@@ -194,7 +194,7 @@ export default function CalendarGrid({
                         <motion.div
                           key={task.id}
                           layout
-                          layoutId={`calendar-task-${task.id}`}
+                          layoutId={`task-${task.id}`}
                           draggable
                           onDragStart={(e) => {
                             e.dataTransfer.setData('text/plain', task.id);
@@ -240,17 +240,63 @@ export default function CalendarGrid({
 
                           {/* Small trigger checkbox */}
                           <div className="flex items-center justify-between mt-1">
-                            <label className="flex items-center gap-1 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                              <input
-                                type="checkbox"
-                                checked={task.completed}
-                                onChange={() => onToggleComplete(task.id)}
-                                className="h-3.5 w-3.5 rounded-xs border-neutral-300 text-neutral-900 focus:ring-none cursor-pointer"
-                              />
+                            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                onClick={() => onToggleComplete(task.id)}
+                                className={`relative h-3.5 w-3.5 rounded-xs border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+                                  task.completed 
+                                    ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400' 
+                                    : 'border-neutral-300 dark:border-neutral-700 bg-transparent hover:border-neutral-400 dark:hover:border-neutral-500'
+                                }`}
+                              >
+                                <svg
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="4"
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  className="h-2.5 w-2.5 text-white"
+                                >
+                                  <motion.path
+                                    d="M20 6L9 17L4 12"
+                                    initial={false}
+                                    animate={{ pathLength: task.completed ? 1 : 0 }}
+                                    transition={{ type: 'spring', stiffness: 350, damping: 22 }}
+                                  />
+                                </svg>
+
+                                {/* Micro-Confetti Burst */}
+                                {task.completed && (
+                                  <div className="absolute pointer-events-none inset-0 flex items-center justify-center overflow-visible">
+                                    {[...Array(4)].map((_, i) => {
+                                      const angle = (i * 360) / 4;
+                                      const angleRad = (angle * Math.PI) / 180;
+                                      const x = Math.cos(angleRad) * 10;
+                                      const y = Math.sin(angleRad) * 10;
+                                      return (
+                                        <motion.span
+                                          key={i}
+                                          className="absolute h-0.5 w-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                                          initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
+                                          animate={{
+                                            scale: [0, 1.4, 0],
+                                            x: [0, x],
+                                            y: [0, y],
+                                            opacity: [1, 1, 0],
+                                          }}
+                                          transition={{ duration: 0.38, ease: "easeOut" }}
+                                        />
+                                      );
+                                    })}
+                                  </div>
+                                )}
+                              </button>
                               <span className="text-[9px] text-neutral-400 font-semibold select-none">
                                 {task.completed ? 'Done' : 'Do'}
                               </span>
-                            </label>
+                            </div>
                             
                             {task.reminder && (
                               <Icons.Bell className="h-2.5 w-2.5 text-amber-500" />

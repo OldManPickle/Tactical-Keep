@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import * as Icons from 'lucide-react';
 
 // M3 Design Tokens and typography categories mapping to Tailwind classes

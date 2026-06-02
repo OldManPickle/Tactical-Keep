@@ -74,3 +74,24 @@ export function getTodayDateString(): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
+
+export function updateStreakAndCompletions(prev: UserStats, todayStr: string): { dailyStreak: number; lastCompletionDate: string; totalCompletedCount: number } {
+  const lastDate = prev.lastCompletionDate;
+  let newStreak = prev.dailyStreak;
+
+  if (!lastDate) {
+    newStreak = 1;
+  } else if (lastDate !== todayStr) {
+    const lastCompletion = new Date(lastDate);
+    const todayDate = new Date(todayStr);
+    const diffTime = Math.abs(todayDate.getTime() - lastCompletion.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    newStreak = diffDays === 1 ? newStreak + 1 : 1;
+  }
+
+  return {
+    dailyStreak: newStreak,
+    lastCompletionDate: todayStr,
+    totalCompletedCount: prev.totalCompletedCount + 1,
+  };
+}

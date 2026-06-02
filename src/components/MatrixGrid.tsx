@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as Icons from 'lucide-react';
 import { Task, QuadrantType } from '../types';
 import { COLOR_OPTIONS } from '../utils';
-import { M3ElevatedCard, M3Typography } from './Material3Components';
+import { M3Typography, M3ElevatedCard } from './Material3Components';
 
 interface MatrixGridProps {
   tasks: Task[];
@@ -12,6 +12,8 @@ interface MatrixGridProps {
   onMoveQuadrant: (id: string, newQuad: QuadrantType) => void;
   onTaskDrop: (taskId: string, quadrant: QuadrantType) => void;
   onEditTask: (task: Task) => void;
+  sortBy?: 'priority' | 'title' | 'date';
+  viewMode?: 'active' | 'archived';
 }
 
 export default function MatrixGrid({
@@ -21,12 +23,28 @@ export default function MatrixGrid({
   onMoveQuadrant,
   onTaskDrop,
   onEditTask,
+  sortBy = 'priority',
+  viewMode = 'active',
 }: MatrixGridProps) {
   // Group tasks by quadrant
   const getQuadrantTasks = (quad: QuadrantType) => {
-    return tasks
-      .filter((t) => t.quadrant === quad)
-      .sort((a, b) => b.priority - a.priority);
+    const isArchivedMode = viewMode === 'archived';
+    const quadrantTasks = tasks.filter((t) => t.quadrant === quad && (isArchivedMode ? t.completed : !t.completed));
+    if (sortBy === 'title') {
+      return quadrantTasks.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    if (sortBy === 'date') {
+      return quadrantTasks.sort((a, b) => {
+        if (a.scheduledDate && b.scheduledDate) {
+          return a.scheduledDate.localeCompare(b.scheduledDate);
+        }
+        if (a.scheduledDate) return -1;
+        if (b.scheduledDate) return 1;
+        return b.priority - a.priority;
+      });
+    }
+    // Default to priority
+    return quadrantTasks.sort((a, b) => b.priority - a.priority);
   };
 
   // Drag handlers
@@ -51,22 +69,33 @@ export default function MatrixGrid({
   const renderCard = (task: Task) => {
     const activeColor = COLOR_OPTIONS.find((c) => c.name.toUpperCase() === task.color.toUpperCase()) || COLOR_OPTIONS[0];
 
+    let quadrantBorderClass = 'border-l-4 ';
+    if (task.quadrant === 'urgent-important') {
+      quadrantBorderClass += 'border-l-red-500 dark:border-l-red-400';
+    } else if (task.quadrant === 'important-not-urgent') {
+      quadrantBorderClass += 'border-l-emerald-500 dark:border-l-emerald-400';
+    } else if (task.quadrant === 'urgent-not-important') {
+      quadrantBorderClass += 'border-l-blue-500 dark:border-l-blue-400';
+    } else if (task.quadrant === 'not-urgent-not-important') {
+      quadrantBorderClass += 'border-l-amber-500 dark:border-l-amber-400';
+    }
+
     return (
       <motion.div
         key={task.id}
         layout
-        layoutId={`matrix-task-${task.id}`}
+        layoutId={`task-${task.id}`}
         draggable
         onDragStart={(e) => handleDragStart(e, task.id)}
         onClick={() => onEditTask(task)}
         id={`task_card_${task.id}`}
-        className={`group relative flex flex-col justify-between p-4 rounded-2xl bg-white dark:bg-[#13151b] border border-neutral-200/40 dark:border-neutral-800/50 shadow-xs hover:shadow-md transition-all cursor-pointer ${
+        className={`group relative flex flex-col justify-between p-4 rounded-2xl bg-white dark:bg-[#13151b] border border-neutral-200/40 dark:border-neutral-800/50 shadow-xs hover:shadow-md transition-all cursor-pointer ${quadrantBorderClass} ${
           activeColor.light
         } dark:${activeColor.dark} ${
-          task.completed ? 'opacity-55 scale-[0.98]' : 'scale-100'
+          task.completed && viewMode !== 'archived' ? 'opacity-55 scale-[0.98]' : 'scale-100'
         }`}
         initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: task.completed ? 0.55 : 1, y: 0 }}
+        animate={{ opacity: task.completed && viewMode !== 'archived' ? 0.55 : 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
         transition={{
           type: 'spring',
@@ -80,13 +109,59 @@ export default function MatrixGrid({
           <div className="flex items-start justify-between gap-2.5">
             <div className="flex items-start gap-3 max-w-[85%]">
               <div onClick={(e) => e.stopPropagation()} className="inline-flex shrink-0 mt-0.5">
-                <input
-                  type="checkbox"
-                  checked={task.completed}
-                  onChange={() => onToggleComplete(task.id)}
+                <button
+                  type="button"
+                  onClick={() => onToggleComplete(task.id)}
                   id={`task_checkbox_${task.id}`}
-                  className="h-4.5 w-4.5 shrink-0 rounded-md border-neutral-300 text-neutral-900 focus:ring-transparent cursor-pointer"
-                />
+                  className={`relative h-5 w-5 rounded-md border flex items-center justify-center shrink-0 transition-all focus:outline-hidden cursor-pointer ${
+                    task.completed 
+                      ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400' 
+                      : 'border-neutral-300 dark:border-neutral-700 bg-transparent hover:border-neutral-400 dark:hover:border-neutral-500'
+                  }`}
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-3.5 w-3.5 text-white"
+                  >
+                    <motion.path
+                      d="M20 6L9 17L4 12"
+                      initial={false}
+                      animate={{ pathLength: task.completed ? 1 : 0 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                    />
+                  </svg>
+
+                  {/* Confetti Micro-Burst */}
+                  {task.completed && (
+                    <div className="absolute pointer-events-none inset-0 flex items-center justify-center overflow-visible">
+                      {[...Array(6)].map((_, i) => {
+                        const angle = (i * 360) / 6;
+                        const angleRad = (angle * Math.PI) / 180;
+                        const x = Math.cos(angleRad) * 16;
+                        const y = Math.sin(angleRad) * 16;
+                        return (
+                          <motion.span
+                            key={i}
+                            className="absolute h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                            initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
+                            animate={{
+                              scale: [0, 1.4, 0],
+                              x: [0, x],
+                              y: [0, y],
+                              opacity: [1, 1, 0],
+                            }}
+                            transition={{ duration: 0.45, ease: "easeOut" }}
+                          />
+                        );
+                      })}
+                    </div>
+                  )}
+                </button>
               </div>
               <div className="flex-1 min-w-0">
                 <span className={`${M3Typography.titleMedium} block leading-snug break-words ${
@@ -279,30 +354,37 @@ export default function MatrixGrid({
       ? "border border-amber-200/40 dark:border-amber-950/20 bg-amber-50/[0.01] dark:bg-amber-950/[0.01] opacity-60"
       : "border border-amber-250 dark:border-amber-950/40 bg-amber-50/5 dark:bg-amber-950/5";
 
-  const activeDoFirst = UIList.filter(t => !t.completed).length;
-  const activeSchedule = INUList.filter(t => !t.completed).length;
-  const activeDelegate = UNIList.filter(t => !t.completed).length;
-  const activeEliminate = NUNIList.filter(t => !t.completed).length;
+  const activeDoFirst = viewMode === 'archived' ? UIList.length : UIList.filter(t => !t.completed).length;
+  const activeSchedule = viewMode === 'archived' ? INUList.length : INUList.filter(t => !t.completed).length;
+  const activeDelegate = viewMode === 'archived' ? UNIList.length : UNIList.filter(t => !t.completed).length;
+  const activeEliminate = viewMode === 'archived' ? NUNIList.length : NUNIList.filter(t => !t.completed).length;
   const totalActive = activeDoFirst + activeSchedule + activeDelegate + activeEliminate;
 
   // Generate dynamic recommendation insights based on maximum loading zone
-  let recommendation = "All clear! No active tasks across any quadrants. Great job!";
+  let recommendation = viewMode === 'archived'
+    ? "Clean slate achieved! Your historic archive records all your finished tasks."
+    : "All clear! No active tasks across any quadrants. Great job!";
   let borderHighlightClass = "border-l-4 border-l-neutral-300 dark:border-l-neutral-700";
   
   if (totalActive > 0) {
-    const maxActive = Math.max(activeDoFirst, activeSchedule, activeDelegate, activeEliminate);
-    if (activeDoFirst === maxActive) {
-      recommendation = "Critical Focus: Urgent fires dominate your load. Deal with Do First objectives immediately.";
-      borderHighlightClass = "border-l-4 border-l-red-500";
-    } else if (activeSchedule === maxActive) {
-      recommendation = "Steady Planning: Most of your focus is scheduled. Invest in calm, proactive deep-work sessions today.";
-      borderHighlightClass = "border-l-4 border-l-emerald-500";
-    } else if (activeDelegate === maxActive) {
-      recommendation = "Optimizing: High volume of busywork. Try to delegate, automate, or decline to protect your calendar.";
-      borderHighlightClass = "border-l-4 border-l-blue-500";
+    if (viewMode === 'archived') {
+      recommendation = "Impressive record of accomplishment. You can restore any task back to the active board by checking its status again.";
+      borderHighlightClass = "border-l-4 border-l-emerald-500 dark:border-l-emerald-400";
     } else {
-      recommendation = "Declutter: Non-value tasks are piling up. Purge or eliminate these distractions from your list.";
-      borderHighlightClass = "border-l-4 border-l-amber-500";
+      const maxActive = Math.max(activeDoFirst, activeSchedule, activeDelegate, activeEliminate);
+      if (activeDoFirst === maxActive) {
+        recommendation = "Critical Focus: Urgent fires dominate your load. Deal with Do First objectives immediately.";
+        borderHighlightClass = "border-l-4 border-l-red-500 dark:border-l-red-400";
+      } else if (activeSchedule === maxActive) {
+        recommendation = "Steady Planning: Most of your focus is scheduled. Invest in calm, proactive deep-work sessions today.";
+        borderHighlightClass = "border-l-4 border-l-emerald-500 dark:border-l-emerald-400";
+      } else if (activeDelegate === maxActive) {
+        recommendation = "Optimizing: High volume of busywork. Try to delegate, automate, or decline to protect your calendar.";
+        borderHighlightClass = "border-l-4 border-l-blue-500 dark:border-l-blue-400";
+      } else {
+        recommendation = "Declutter: Non-value tasks are piling up. Purge or eliminate these distractions from your list.";
+        borderHighlightClass = "border-l-4 border-l-amber-500 dark:border-l-amber-400";
+      }
     }
   }
 
@@ -313,20 +395,31 @@ export default function MatrixGrid({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7E0EC] dark:border-[#625B71]/30 pb-4 mb-4">
           <div className="flex items-center gap-3">
             <span className="p-2.5 rounded-xl bg-[#6750A4]/10 dark:bg-[#E7E0EC]/10 text-[#6750A4] dark:text-[#E7E0EC] shrink-0">
-              <Icons.BarChart3 className="h-5 w-5" />
+              {viewMode === 'archived' ? (
+                <Icons.Archive className="h-5 w-5 text-emerald-500" />
+              ) : (
+                <Icons.BarChart3 className="h-5 w-5" />
+              )}
             </span>
             <div>
               <h3 className={`${M3Typography.titleMedium} text-neutral-900 dark:text-neutral-50`}>
-                Workload Distribution Summary
+                {viewMode === 'archived' ? "Completed Task History & Statistics" : "Workload Distribution Summary"}
               </h3>
               <p className={`${M3Typography.bodySmall} text-neutral-500 dark:text-neutral-400 mt-0.5`}>
-                Immediate visual breakdown of active task counts in each prioritization quadrant
+                {viewMode === 'archived' 
+                  ? "Historic distribution pattern of all completed tasks in your priority archive"
+                  : "Immediate visual breakdown of active task counts in each prioritization quadrant"
+                }
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2 px-3.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl shrink-0">
-            <span className={`${M3Typography.labelLarge} text-neutral-700 dark:text-neutral-300`}>Total Active:</span>
-            <span className="text-xs font-black bg-[#6750A4] dark:bg-[#625B71] text-white px-2.5 py-0.5 rounded-full select-none">
+            <span className={`${M3Typography.labelLarge} text-neutral-700 dark:text-neutral-300`}>
+              {viewMode === 'archived' ? "Total Completed:" : "Total Active:"}
+            </span>
+            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full select-none text-white ${
+              viewMode === 'archived' ? 'bg-emerald-600 dark:bg-emerald-700' : 'bg-[#6750A4] dark:bg-[#625B71]'
+            }`}>
               {totalActive} task{totalActive === 1 ? '' : 's'}
             </span>
           </div>
@@ -488,7 +581,9 @@ export default function MatrixGrid({
                 className="h-full flex flex-col items-center justify-center text-center p-8"
               >
                 <Icons.CheckSquare className="h-10 w-10 text-red-300 dark:text-red-800 mb-2" />
-                <p className="text-xs font-medium text-neutral-500">No urgent fires. Balanced and serene.</p>
+                <p className="text-xs font-medium text-neutral-500">
+                  {viewMode === 'archived' ? "No archived urgent tasks. Keep making progress!" : "No urgent fires. Balanced and serene."}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -539,7 +634,9 @@ export default function MatrixGrid({
                 className="h-full flex flex-col items-center justify-center text-center p-8"
               >
                 <Icons.CalendarRange className="h-10 w-10 text-emerald-300 dark:text-emerald-800 mb-2" />
-                <p className="text-xs font-medium text-neutral-500">All planned work scheduled. Way ahead!</p>
+                <p className="text-xs font-medium text-neutral-500">
+                  {viewMode === 'archived' ? "No archived planned objectives." : "All planned work scheduled. Way ahead!"}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -590,7 +687,9 @@ export default function MatrixGrid({
                 className="h-full flex flex-col items-center justify-center text-center p-8"
               >
                 <Icons.Shuffle className="h-10 w-10 text-blue-300 dark:text-blue-800 mb-2" />
-                <p className="text-xs font-medium text-neutral-500">Unburdened. Everything delegated smoothly.</p>
+                <p className="text-xs font-medium text-neutral-500">
+                  {viewMode === 'archived' ? "No archived delegated tasks." : "Unburdened. Everything delegated smoothly."}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -641,7 +740,9 @@ export default function MatrixGrid({
                 className="h-full flex flex-col items-center justify-center text-center p-8"
               >
                 <Icons.Sparkles className="h-10 w-10 text-amber-300 dark:text-amber-700 mb-2" />
-                <p className="text-xs font-medium text-neutral-500">Space clean of non-value distractions!</p>
+                <p className="text-xs font-medium text-neutral-500">
+                  {viewMode === 'archived' ? "No archived bypassed distractions." : "Space clean of non-value distractions!"}
+                </p>
               </motion.div>
             )}
           </AnimatePresence>

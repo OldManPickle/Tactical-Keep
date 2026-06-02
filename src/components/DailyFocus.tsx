@@ -152,16 +152,61 @@ export default function DailyFocus({
               <div className="flex items-start gap-4 justify-between relative z-10">
                 {/* Checkbox + Title / Desc block */}
                 <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                  <label className="flex items-center justify-center shrink-0 mt-0.5 relative cursor-pointer group/check">
-                    <input
-                      type="checkbox"
-                      checked={currentFocusTask.completed}
-                      onChange={() => onToggleComplete(currentFocusTask.id)}
+                  <div className="flex items-center justify-center shrink-0 mt-0.5 relative">
+                    <button
+                      type="button"
+                      onClick={() => onToggleComplete(currentFocusTask.id)}
                       id="daily_focus_chk"
-                      className="peer h-5.5 w-5.5 rounded-lg border-2 border-neutral-300 dark:border-neutral-600 focus:ring-transparent text-amber-500 focus:ring-offset-0 cursor-pointer transition-colors"
-                    />
-                    <Icons.Check className="h-3.5 w-3.5 text-white absolute opacity-0 peer-checked:opacity-100 pointer-events-none stroke-[3.5px] transition-opacity" />
-                  </label>
+                      className={`relative h-5.5 w-5.5 rounded-lg border-2 flex items-center justify-center transition-all focus:outline-hidden cursor-pointer ${
+                        currentFocusTask.completed 
+                          ? 'border-emerald-500 bg-emerald-500 dark:border-emerald-400 dark:bg-emerald-400' 
+                          : 'border-neutral-300 dark:border-neutral-600 bg-transparent hover:border-neutral-450 dark:hover:border-neutral-500'
+                      }`}
+                    >
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="3.5"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="h-3.5 w-3.5 text-white"
+                      >
+                        <motion.path
+                          d="M20 6L9 17L4 12"
+                          initial={false}
+                          animate={{ pathLength: currentFocusTask.completed ? 1 : 0 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                        />
+                      </svg>
+
+                      {/* Confetti Micro-Burst */}
+                      {currentFocusTask.completed && (
+                        <div className="absolute pointer-events-none inset-0 flex items-center justify-center overflow-visible">
+                          {[...Array(8)].map((_, i) => {
+                            const angle = (i * 360) / 8;
+                            const angleRad = (angle * Math.PI) / 180;
+                            const x = Math.cos(angleRad) * 20;
+                            const y = Math.sin(angleRad) * 20;
+                            return (
+                              <motion.span
+                                key={i}
+                                className="absolute h-1 w-1 rounded-full bg-emerald-500 dark:bg-emerald-400"
+                                initial={{ scale: 0, x: 0, y: 0, opacity: 1 }}
+                                animate={{
+                                  scale: [0, 1.4, 0],
+                                  x: [0, x],
+                                  y: [0, y],
+                                  opacity: [1, 1, 0],
+                                }}
+                                transition={{ duration: 0.48, ease: "easeOut" }}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </button>
+                  </div>
 
                   <div className="min-w-0">
                     <h4 className={`text-sm font-black tracking-tight leading-tight transition-all uppercase ${
