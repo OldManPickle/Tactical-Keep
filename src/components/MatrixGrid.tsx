@@ -174,6 +174,12 @@ export default function MatrixGrid({
                     {task.description}
                   </p>
                 )}
+                {viewMode === 'archived' && task.completedAt && (
+                  <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 pb-1 flex items-center gap-1.5 font-semibold leading-none" id={`task_completed_at_${task.id}`}>
+                    <Icons.CheckCircle className="h-3 w-3 shrink-0 text-emerald-500 dark:text-emerald-400" />
+                    <span>Completed on: {new Date(task.completedAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                  </p>
+                )}
               </div>
             </div>
 
@@ -330,227 +336,134 @@ export default function MatrixGrid({
     );
   };
 
-  const uiStyle = isUIHighest
-    ? "border-2 border-red-500 dark:border-red-600/70 bg-red-500/[0.04] dark:bg-red-500/[0.03] ring-4 ring-red-500/5 dark:ring-red-950/10 shadow-xs"
-    : maxCount > 0
-      ? "border border-red-200/40 dark:border-red-950/20 bg-red-50/[0.01] dark:bg-red-950/[0.01] opacity-60"
-      : "border border-red-200 dark:border-red-950/40 bg-red-50/5 dark:bg-red-950/5";
+  const quadrantStyle = "border border-neutral-200 dark:border-neutral-800/85 bg-white dark:bg-[#13151b] shadow-xs";
 
-  const inuStyle = isINUHighest
-    ? "border-2 border-emerald-500 dark:border-emerald-600/70 bg-emerald-500/[0.04] dark:bg-emerald-500/[0.03] ring-4 ring-emerald-500/5 dark:ring-emerald-950/10 shadow-xs"
-    : maxCount > 0
-      ? "border border-emerald-200/40 dark:border-emerald-950/20 bg-emerald-50/[0.01] dark:bg-emerald-950/[0.01] opacity-60"
-      : "border border-emerald-250 dark:border-emerald-950/40 bg-emerald-50/5 dark:bg-emerald-950/5";
-
-  const uniStyle = isUNIHighest
-    ? "border-2 border-blue-500 dark:border-blue-600/70 bg-blue-500/[0.04] dark:bg-blue-500/[0.03] ring-4 ring-blue-500/5 dark:ring-blue-950/10 shadow-xs"
-    : maxCount > 0
-      ? "border border-blue-200/40 dark:border-blue-950/20 bg-blue-50/[0.01] dark:bg-blue-950/[0.01] opacity-60"
-      : "border border-blue-250 dark:border-blue-950/40 bg-blue-50/5 dark:bg-blue-950/5";
-
-  const nuniStyle = isNUNIHighest
-    ? "border-2 border-amber-500 dark:border-amber-600/70 bg-amber-500/[0.04] dark:bg-amber-500/[0.03] ring-4 ring-amber-500/5 dark:ring-amber-950/10 shadow-xs"
-    : maxCount > 0
-      ? "border border-amber-200/40 dark:border-amber-950/20 bg-amber-50/[0.01] dark:bg-amber-950/[0.01] opacity-60"
-      : "border border-amber-250 dark:border-amber-950/40 bg-amber-50/5 dark:bg-amber-950/5";
-
-  const activeDoFirst = viewMode === 'archived' ? UIList.length : UIList.filter(t => !t.completed).length;
-  const activeSchedule = viewMode === 'archived' ? INUList.length : INUList.filter(t => !t.completed).length;
-  const activeDelegate = viewMode === 'archived' ? UNIList.length : UNIList.filter(t => !t.completed).length;
-  const activeEliminate = viewMode === 'archived' ? NUNIList.length : NUNIList.filter(t => !t.completed).length;
-  const totalActive = activeDoFirst + activeSchedule + activeDelegate + activeEliminate;
-
-  // Generate dynamic recommendation insights based on maximum loading zone
-  let recommendation = viewMode === 'archived'
-    ? "Clean slate achieved! Your historic archive records all your finished tasks."
-    : "All clear! No active tasks across any quadrants. Great job!";
-  let borderHighlightClass = "border-l-4 border-l-neutral-300 dark:border-l-neutral-700";
-  
-  if (totalActive > 0) {
-    if (viewMode === 'archived') {
-      recommendation = "Impressive record of accomplishment. You can restore any task back to the active board by checking its status again.";
-      borderHighlightClass = "border-l-4 border-l-emerald-500 dark:border-l-emerald-400";
-    } else {
-      const maxActive = Math.max(activeDoFirst, activeSchedule, activeDelegate, activeEliminate);
-      if (activeDoFirst === maxActive) {
-        recommendation = "Critical Focus: Urgent fires dominate your load. Deal with Do First objectives immediately.";
-        borderHighlightClass = "border-l-4 border-l-red-500 dark:border-l-red-400";
-      } else if (activeSchedule === maxActive) {
-        recommendation = "Steady Planning: Most of your focus is scheduled. Invest in calm, proactive deep-work sessions today.";
-        borderHighlightClass = "border-l-4 border-l-emerald-500 dark:border-l-emerald-400";
-      } else if (activeDelegate === maxActive) {
-        recommendation = "Optimizing: High volume of busywork. Try to delegate, automate, or decline to protect your calendar.";
-        borderHighlightClass = "border-l-4 border-l-blue-500 dark:border-l-blue-400";
-      } else {
-        recommendation = "Declutter: Non-value tasks are piling up. Purge or eliminate these distractions from your list.";
-        borderHighlightClass = "border-l-4 border-l-amber-500 dark:border-l-amber-400";
-      }
+  // Helper to compute background theme color intensity / opacity based on task load
+  const getQuadrantBgClass = (count: number, colorKey: 'red' | 'emerald' | 'blue' | 'amber') => {
+    if (count === 0) {
+      return "bg-white dark:bg-[#13151b]";
     }
-  }
+    if (colorKey === 'red') {
+      if (count <= 1) return "bg-red-500/[0.02] dark:bg-red-500/[0.02]";
+      if (count <= 2) return "bg-red-500/[0.05] dark:bg-red-500/[0.04]";
+      if (count <= 4) return "bg-red-500/[0.11] dark:bg-red-500/[0.09]";
+      return "bg-red-500/[0.18] dark:bg-red-500/[0.15]"; // High / peak congestion
+    }
+    if (colorKey === 'emerald') {
+      if (count <= 1) return "bg-emerald-500/[0.02] dark:bg-emerald-500/[0.01]";
+      if (count <= 2) return "bg-emerald-500/[0.04] dark:bg-emerald-500/[0.03]";
+      if (count <= 4) return "bg-emerald-500/[0.09] dark:bg-emerald-500/[0.07]";
+      return "bg-emerald-500/[0.15] dark:bg-emerald-500/[0.12]"; // High / peak congestion
+    }
+    if (colorKey === 'blue') {
+      if (count <= 1) return "bg-blue-500/[0.02] dark:bg-blue-500/[0.01]";
+      if (count <= 2) return "bg-blue-500/[0.04] dark:bg-blue-500/[0.03]";
+      if (count <= 4) return "bg-blue-500/[0.09] dark:bg-blue-500/[0.07]";
+      return "bg-blue-500/[0.15] dark:bg-blue-500/[0.12]"; // High / peak congestion
+    }
+    // amber
+    if (count <= 1) return "bg-amber-500/[0.02] dark:bg-amber-500/[0.01]";
+    if (count <= 2) return "bg-amber-500/[0.04] dark:bg-amber-500/[0.03]";
+    if (count <= 4) return "bg-amber-500/[0.09] dark:bg-amber-500/[0.07]";
+    return "bg-amber-500/[0.15] dark:bg-amber-500/[0.12]"; // High / peak congestion
+  };
+
+  // Helper to obtain text and color styles for the intensity monitor legend
+  const getIntensityState = (count: number) => {
+    if (count === 0) return { label: 'Optimal', colorClass: 'text-neutral-500 dark:text-neutral-450 bg-neutral-100 dark:bg-neutral-800/80 border border-neutral-200/30' };
+    if (count <= 2) return { label: 'Light', colorClass: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/20' };
+    if (count <= 4) return { label: 'Moderate', colorClass: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20' };
+    return { label: 'Overloaded', colorClass: 'text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-950/30 border border-red-200/50 dark:border-red-900/30 animate-pulse' };
+  };
+
+  // Helper to compute overall quadrant completion rate (active vs. completed)
+  const getQuadrantCompletionPercentage = (quad: QuadrantType) => {
+    const quadTasks = tasks.filter((t) => t.quadrant === quad);
+    const total = quadTasks.length;
+    if (total === 0) return { total: 0, completed: 0, percent: 0 };
+    const completed = quadTasks.filter((t) => t.completed).length;
+    return {
+      total,
+      completed,
+      percent: Math.min(Math.round((completed / total) * 100), 100)
+    };
+  };
+
+  const uiCompStats = getQuadrantCompletionPercentage('urgent-important');
+  const inuCompStats = getQuadrantCompletionPercentage('important-not-urgent');
+  const uniCompStats = getQuadrantCompletionPercentage('urgent-not-important');
+  const nuniCompStats = getQuadrantCompletionPercentage('not-urgent-not-important');
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto px-4">
-      {/* M3 Elevated Workload Distribution Summary Card */}
-      <M3ElevatedCard className={`p-5 bg-white dark:bg-[#13151b] overflow-hidden ${borderHighlightClass}`}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-[#E7E0EC] dark:border-[#625B71]/30 pb-4 mb-4">
-          <div className="flex items-center gap-3">
-            <span className="p-2.5 rounded-xl bg-[#6750A4]/10 dark:bg-[#E7E0EC]/10 text-[#6750A4] dark:text-[#E7E0EC] shrink-0">
-              {viewMode === 'archived' ? (
-                <Icons.Archive className="h-5 w-5 text-emerald-500" />
-              ) : (
-                <Icons.BarChart3 className="h-5 w-5" />
-              )}
-            </span>
-            <div>
-              <h3 className={`${M3Typography.titleMedium} text-neutral-900 dark:text-neutral-50`}>
-                {viewMode === 'archived' ? "Completed Task History & Statistics" : "Workload Distribution Summary"}
-              </h3>
-              <p className={`${M3Typography.bodySmall} text-neutral-500 dark:text-neutral-400 mt-0.5`}>
-                {viewMode === 'archived' 
-                  ? "Historic distribution pattern of all completed tasks in your priority archive"
-                  : "Immediate visual breakdown of active task counts in each prioritization quadrant"
-                }
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 px-3.5 py-1.5 bg-neutral-100 dark:bg-neutral-800 rounded-xl shrink-0">
-            <span className={`${M3Typography.labelLarge} text-neutral-700 dark:text-neutral-300`}>
-              {viewMode === 'archived' ? "Total Completed:" : "Total Active:"}
-            </span>
-            <span className={`text-xs font-black px-2.5 py-0.5 rounded-full select-none text-white ${
-              viewMode === 'archived' ? 'bg-emerald-600 dark:bg-emerald-700' : 'bg-[#6750A4] dark:bg-[#625B71]'
-            }`}>
-              {totalActive} task{totalActive === 1 ? '' : 's'}
-            </span>
+      {/* Small Density Intensity Visualizer in Matrix Header */}
+      <div id="density_intensity_monitor" className="bg-neutral-50/70 dark:bg-[#15171f]/60 border border-neutral-200/50 dark:border-neutral-800/60 rounded-2xl p-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 transition-colors">
+        <div className="flex items-center gap-3">
+          <span className="p-2 ml-1 rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
+            <Icons.Layers className="h-4.5 w-4.5" />
+          </span>
+          <div>
+            <h4 className="text-xs font-black text-neutral-850 dark:text-neutral-100 uppercase tracking-widest leading-none">
+              Density Intensity Monitor
+            </h4>
+            <p className="text-[10px] text-neutral-500 dark:text-neutral-400 font-semibold mt-1">
+              Quadrant backgrounds change opacity based on active task volume to reveal task overload levels at a glance.
+            </p>
           </div>
         </div>
 
-        {/* 4 Quadrants Summary Horizontal Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Live Heat Legend & Feeds */}
+        <div className="flex flex-wrap items-center gap-2">
           {/* Do First */}
-          <div className="p-3.5 bg-red-500/[0.03] dark:bg-red-500/[0.02] border border-red-500/10 dark:border-red-500/[0.15] rounded-[12px] flex flex-col justify-between min-h-[90px] transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-red-600 dark:text-red-400 flex items-center gap-1.5">
-                <Icons.Flame className="h-3.5 w-3.5" />
-                Do First
-              </span>
-              <span className="text-xl font-black text-red-700 dark:text-red-400">
-                {activeDoFirst}
-              </span>
-            </div>
-            <div className="mt-2.5">
-              <div className="w-full bg-neutral-200/40 dark:bg-neutral-800/40 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-red-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${totalActive > 0 ? (activeDoFirst / totalActive) * 105 : 0}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-neutral-450 dark:text-neutral-500 mt-1.5 font-mono">
-                {totalActive > 0 ? Math.round((activeDoFirst / totalActive) * 100) : 0}% of active workload
-              </p>
-            </div>
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-[#111217] border border-neutral-200/40 dark:border-neutral-800/60 text-[10px] font-bold shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-red-500" />
+            <span className="text-neutral-450 dark:text-neutral-500">Do First:</span>
+            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${getIntensityState(UIList.length).colorClass}`}>
+              {getIntensityState(UIList.length).label} ({UIList.length})
+            </span>
           </div>
 
-          {/* Schedule It */}
-          <div className="p-3.5 bg-emerald-500/[0.03] dark:bg-emerald-500/[0.02] border border-emerald-500/10 dark:border-emerald-500/[0.15] rounded-[12px] flex flex-col justify-between min-h-[90px] transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-                <Icons.Clock className="h-3.5 w-3.5" />
-                Schedule It
-              </span>
-              <span className="text-xl font-black text-emerald-700 dark:text-emerald-400">
-                {activeSchedule}
-              </span>
-            </div>
-            <div className="mt-2.5">
-              <div className="w-full bg-neutral-200/40 dark:bg-neutral-800/40 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-emerald-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${totalActive > 0 ? (activeSchedule / totalActive) * 105 : 0}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-neutral-450 dark:text-neutral-500 mt-1.5 font-mono">
-                {totalActive > 0 ? Math.round((activeSchedule / totalActive) * 100) : 0}% of active workload
-              </p>
-            </div>
+          {/* Schedule */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-[#111217] border border-neutral-200/40 dark:border-neutral-800/60 text-[10px] font-bold shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-neutral-450 dark:text-neutral-500">Schedule:</span>
+            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${getIntensityState(INUList.length).colorClass}`}>
+              {getIntensityState(INUList.length).label} ({INUList.length})
+            </span>
           </div>
 
-          {/* Delegate It */}
-          <div className="p-3.5 bg-blue-500/[0.03] dark:bg-blue-500/[0.02] border border-blue-500/10 dark:border-blue-500/[0.15] rounded-[12px] flex flex-col justify-between min-h-[90px] transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
-                <Icons.Users className="h-3.5 w-3.5" />
-                Delegate It
-              </span>
-              <span className="text-xl font-black text-blue-700 dark:text-blue-400">
-                {activeDelegate}
-              </span>
-            </div>
-            <div className="mt-2.5">
-              <div className="w-full bg-neutral-200/40 dark:bg-neutral-800/40 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-blue-500 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${totalActive > 0 ? (activeDelegate / totalActive) * 105 : 0}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-neutral-450 dark:text-neutral-500 mt-1.5 font-mono">
-                {totalActive > 0 ? Math.round((activeDelegate / totalActive) * 100) : 0}% of active workload
-              </p>
-            </div>
+          {/* Delegate */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-[#111217] border border-neutral-200/40 dark:border-neutral-800/60 text-[10px] font-bold shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-blue-500" />
+            <span className="text-neutral-450 dark:text-neutral-500">Delegate:</span>
+            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${getIntensityState(UNIList.length).colorClass}`}>
+              {getIntensityState(UNIList.length).label} ({UNIList.length})
+            </span>
           </div>
 
-          {/* Eliminate It */}
-          <div className="p-3.5 bg-amber-500/[0.03] dark:bg-amber-500/[0.02] border border-amber-500/10 dark:border-amber-500/[0.15] rounded-[12px] flex flex-col justify-between min-h-[90px] transition-all">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-amber-600 dark:text-[#E2A23B] flex items-center gap-1.5">
-                <Icons.Trash2 className="h-3.5 w-3.5" />
-                Eliminate It
-              </span>
-              <span className="text-xl font-black text-amber-700 dark:text-[#E2A23B]">
-                {activeEliminate}
-              </span>
-            </div>
-            <div className="mt-2.5">
-              <div className="w-full bg-neutral-200/40 dark:bg-neutral-800/40 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-amber-550 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${totalActive > 0 ? (activeEliminate / totalActive) * 105 : 0}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-neutral-450 dark:text-neutral-500 mt-1.5 font-mono">
-                {totalActive > 0 ? Math.round((activeEliminate / totalActive) * 100) : 0}% of active workload
-              </p>
-            </div>
+          {/* Eliminate */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-white dark:bg-[#111217] border border-neutral-200/40 dark:border-neutral-800/60 text-[10px] font-bold shadow-xs">
+            <span className="h-2 w-2 rounded-full bg-amber-500" />
+            <span className="text-neutral-450 dark:text-neutral-500">Eliminate:</span>
+            <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black ${getIntensityState(NUNIList.length).colorClass}`}>
+              {getIntensityState(NUNIList.length).label} ({NUNIList.length})
+            </span>
           </div>
         </div>
-
-        {/* M3 Active Recommendation Banner footer */}
-        <div className="mt-4 pt-3.5 border-t border-[#E7E0EC] dark:border-[#625B71]/30 flex items-center gap-2.5">
-          <span className="p-1 rounded-md bg-[#6750A4]/10 dark:bg-[#E7E0EC]/10 text-[#6750A4] dark:text-[#E7E0EC]">
-            <Icons.Sparkles className="h-3.5 w-3.5" />
-          </span>
-          <span className={`${M3Typography.bodyMedium} text-neutral-700 dark:text-neutral-300 font-medium`}>
-            {recommendation}
-          </span>
-        </div>
-      </M3ElevatedCard>
+      </div>
 
       {/* Eisenhower Matrix Layout Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-      {/* 1. DO FIRST (Urgent & Important) */}
+        {/* 1. DO FIRST (Urgent & Important) */}
       <div
         id="quadrant_urgent_important"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, 'urgent-important')}
-        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 ${uiStyle}`}
+        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 border border-neutral-200 dark:border-neutral-800/85 shadow-xs ${getQuadrantBgClass(UIList.length, 'red')}`}
       >
-        <div className={`border-b border-red-100 dark:border-red-950/20 px-4 py-3 flex items-center justify-between transition-colors ${
-          isUIHighest ? 'bg-red-500/[0.12] dark:bg-red-950/40 border-b-2' : 'bg-red-50 dark:bg-red-950/20'
-        }`}>
+        <div className="px-4 py-3 flex items-center justify-between transition-colors border-b border-red-100 dark:border-red-950 bg-red-50/70 dark:bg-red-950/20">
           <div className="flex items-center gap-2">
-            <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${
-              isUIHighest ? 'bg-red-600 text-white shadow-xs' : 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400'
-            }`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">
               <Icons.Flame className="h-4 w-4" />
             </span>
             <div>
@@ -558,14 +471,28 @@ export default function MatrixGrid({
                 <h3 className="text-sm font-bold text-red-800 dark:text-red-300">Do First</h3>
                 {renderDensityBadge(UIList.length, isUIHighest, 'red')}
               </div>
-              <p className="text-[10px] text-red-600/70 dark:text-red-400/60 font-medium leading-none mt-0.5">Urgent & Important</p>
+              <p className="text-[10px] text-red-655/80 dark:text-red-400/60 font-medium leading-none mt-0.5">Urgent & Important</p>
             </div>
           </div>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-            isUIHighest ? 'text-white bg-red-600' : 'text-red-700 dark:text-red-400 bg-red-100 dark:bg-red-950/60'
-          }`}>
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-red-700 dark:text-red-300 bg-red-100/80 dark:bg-red-900/40 border border-red-200/50 dark:border-red-900/30">
             {UIList.length} Tasks
           </span>
+        </div>
+        
+        {/* Quadrant completion progress bar */}
+        <div id="progress_bar_urgent_important" className="px-4 py-2 border-b border-red-100/30 dark:border-red-950/20 bg-red-50/[0.12] dark:bg-red-950/[0.04] flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[10px] font-bold select-none leading-none">
+            <span className="text-neutral-550 dark:text-neutral-450 uppercase tracking-wider text-[9px]">Completion Rate</span>
+            <span className="font-mono text-red-650 dark:text-red-400 font-bold">{uiCompStats.percent}% ({uiCompStats.completed}/{uiCompStats.total})</span>
+          </div>
+          <div className="w-full h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${uiCompStats.percent}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="h-full bg-red-500 dark:bg-red-600 rounded-full"
+            />
+          </div>
         </div>
         <div className="p-4 flex-1 space-y-3.5 overflow-y-auto max-h-[400px]">
           <AnimatePresence mode="popLayout">
@@ -595,30 +522,40 @@ export default function MatrixGrid({
         id="quadrant_important_not_urgent"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, 'important-not-urgent')}
-        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 ${inuStyle}`}
+        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 border border-neutral-200 dark:border-neutral-800/85 shadow-xs ${getQuadrantBgClass(INUList.length, 'emerald')}`}
       >
-        <div className={`border-b border-emerald-100 dark:border-emerald-950/20 px-4 py-3 flex items-center justify-between transition-colors ${
-          isINUHighest ? 'bg-emerald-500/[0.12] dark:bg-emerald-950/40 border-b-2' : 'bg-emerald-50 dark:bg-emerald-950/20'
-        }`}>
+        <div className="px-4 py-3 flex items-center justify-between transition-colors border-b border-emerald-100 dark:border-emerald-950 bg-emerald-50/65 dark:bg-emerald-950/20">
           <div className="flex items-center gap-2">
-            <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${
-              isINUHighest ? 'bg-emerald-600 text-white shadow-xs' : 'bg-emerald-100 text-emerald-705 dark:bg-emerald-950 dark:text-emerald-400'
-            }`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-emerald-100 text-emerald-705 dark:bg-emerald-900/40 dark:text-emerald-300">
               <Icons.Clock className="h-4 w-4" />
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-300">Schedule It</h3>
+                <h3 className="text-sm font-bold text-emerald-800 dark:text-emerald-350">Schedule It</h3>
                 {renderDensityBadge(INUList.length, isINUHighest, 'emerald')}
               </div>
-              <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/60 font-medium leading-none mt-0.5">Important but Not Urgent</p>
+              <p className="text-[10px] text-emerald-655/80 dark:text-emerald-400/60 font-medium leading-none mt-0.5">Important but Not Urgent</p>
             </div>
           </div>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-            isINUHighest ? 'text-white bg-emerald-600' : 'text-emerald-700 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/60'
-          }`}>
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-emerald-700 dark:text-emerald-300 bg-emerald-100/80 dark:bg-emerald-900/40 border border-emerald-200/50 dark:border-emerald-900/30">
             {INUList.length} Tasks
           </span>
+        </div>
+        
+        {/* Quadrant completion progress bar */}
+        <div id="progress_bar_important_not_urgent" className="px-4 py-2 border-b border-emerald-100/30 dark:border-emerald-950/20 bg-emerald-50/[0.12] dark:bg-emerald-950/[0.04] flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[10px] font-bold select-none leading-none">
+            <span className="text-neutral-555 dark:text-neutral-455 uppercase tracking-wider text-[9px]">Completion Rate</span>
+            <span className="font-mono text-emerald-700 dark:text-emerald-400 font-bold">{inuCompStats.percent}% ({inuCompStats.completed}/{inuCompStats.total})</span>
+          </div>
+          <div className="w-full h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${inuCompStats.percent}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="h-full bg-emerald-500 dark:bg-emerald-600 rounded-full"
+            />
+          </div>
         </div>
         <div className="p-4 flex-1 space-y-3.5 overflow-y-auto max-h-[400px]">
           <AnimatePresence mode="popLayout">
@@ -648,15 +585,11 @@ export default function MatrixGrid({
         id="quadrant_urgent_not_important"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, 'urgent-not-important')}
-        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 ${uniStyle}`}
+        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 border border-neutral-200 dark:border-neutral-800/85 shadow-xs ${getQuadrantBgClass(UNIList.length, 'blue')}`}
       >
-        <div className={`border-b border-blue-100 dark:border-blue-950/20 px-4 py-3 flex items-center justify-between transition-colors ${
-          isUNIHighest ? 'bg-blue-500/[0.12] dark:bg-blue-950/40 border-b-2' : 'bg-blue-50 dark:bg-blue-950/20'
-        }`}>
+        <div className="px-4 py-3 flex items-center justify-between transition-colors border-b border-blue-100 dark:border-blue-950 bg-blue-50/70 dark:bg-blue-950/20">
           <div className="flex items-center gap-2">
-            <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${
-              isUNIHighest ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-105 text-blue-700 dark:bg-blue-950 dark:text-blue-400'
-            }`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-305">
               <Icons.Users className="h-4 w-4" />
             </span>
             <div>
@@ -664,14 +597,28 @@ export default function MatrixGrid({
                 <h3 className="text-sm font-bold text-blue-800 dark:text-blue-300">Delegate It</h3>
                 {renderDensityBadge(UNIList.length, isUNIHighest, 'blue')}
               </div>
-              <p className="text-[10px] text-blue-600/70 dark:text-blue-400/60 font-medium leading-none mt-0.5">Urgent but Not Important</p>
+              <p className="text-[10px] text-blue-655/80 dark:text-blue-400/60 font-medium leading-none mt-0.5">Urgent but Not Important</p>
             </div>
           </div>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-            isUNIHighest ? 'text-white bg-blue-600' : 'text-blue-700 dark:text-blue-400 bg-blue-100 dark:bg-blue-950/60'
-          }`}>
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-blue-700 dark:text-blue-305 bg-blue-100/80 dark:bg-blue-900/40 border border-blue-200/50 dark:border-blue-900/30">
             {UNIList.length} Tasks
           </span>
+        </div>
+        
+        {/* Quadrant completion progress bar */}
+        <div id="progress_bar_urgent_not_important" className="px-4 py-2 border-b border-blue-100/30 dark:border-blue-950/20 bg-blue-50/[0.12] dark:bg-blue-950/[0.04] flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[10px] font-bold select-none leading-none">
+            <span className="text-neutral-555 dark:text-neutral-455 uppercase tracking-wider text-[9px]">Completion Rate</span>
+            <span className="font-mono text-blue-700 dark:text-blue-400 font-bold">{uniCompStats.percent}% ({uniCompStats.completed}/{uniCompStats.total})</span>
+          </div>
+          <div className="w-full h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${uniCompStats.percent}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="h-full bg-blue-500 dark:bg-blue-600 rounded-full"
+            />
+          </div>
         </div>
         <div className="p-4 flex-1 space-y-3.5 overflow-y-auto max-h-[400px]">
           <AnimatePresence mode="popLayout">
@@ -701,30 +648,40 @@ export default function MatrixGrid({
         id="quadrant_not_urgent_not_important"
         onDragOver={handleDragOver}
         onDrop={(e) => handleDrop(e, 'not-urgent-not-important')}
-        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 ${nuniStyle}`}
+        className={`flex flex-col min-h-[300px] rounded-2xl overflow-hidden transition-all duration-300 border border-neutral-200 dark:border-neutral-800/85 shadow-xs ${getQuadrantBgClass(NUNIList.length, 'amber')}`}
       >
-        <div className={`border-b border-amber-100 dark:border-amber-950/20 px-4 py-3 flex items-center justify-between transition-colors ${
-          isNUNIHighest ? 'bg-amber-500/[0.12] dark:bg-amber-950/40 border-b-2' : 'bg-amber-50 dark:bg-amber-950/20'
-        }`}>
+        <div className="px-4 py-3 flex items-center justify-between transition-colors border-b border-amber-100 dark:border-amber-950 bg-amber-50/70 dark:bg-amber-950/20">
           <div className="flex items-center gap-2">
-            <span className={`flex h-6 w-6 items-center justify-center rounded-lg ${
-              isNUNIHighest ? 'bg-amber-600 text-white shadow-xs' : 'bg-amber-100 text-amber-705 dark:bg-amber-950 dark:text-amber-305'
-            }`}>
+            <span className="flex h-6 w-6 items-center justify-center rounded-lg bg-amber-100 text-amber-705 dark:bg-amber-900/40 dark:text-amber-300">
               <Icons.Trash2 className="h-4 w-4" />
             </span>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-300">Eliminate It</h3>
+                <h3 className="text-sm font-bold text-amber-800 dark:text-amber-305">Eliminate It</h3>
                 {renderDensityBadge(NUNIList.length, isNUNIHighest, 'amber')}
               </div>
-              <p className="text-[10px] text-amber-600/70 dark:text-amber-400/60 font-medium leading-none mt-0.5">Not Urgent & Not Important</p>
+              <p className="text-[10px] text-amber-655/80 dark:text-amber-400/60 font-medium leading-none mt-0.5">Not Urgent & Not Important</p>
             </div>
           </div>
-          <span className={`text-[11px] font-bold px-2 py-0.5 rounded-full ${
-            isNUNIHighest ? 'text-white bg-amber-650' : 'text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-950/60'
-          }`}>
+          <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full text-amber-700 dark:text-amber-300 bg-amber-100/80 dark:bg-amber-900/40 border border-amber-200/50 dark:border-amber-900/30">
             {NUNIList.length} Tasks
           </span>
+        </div>
+        
+        {/* Quadrant completion progress bar */}
+        <div id="progress_bar_not_urgent_not_important" className="px-4 py-2 border-b border-amber-100/30 dark:border-amber-950/20 bg-amber-50/[0.12] dark:bg-amber-950/[0.04] flex flex-col gap-1">
+          <div className="flex items-center justify-between text-[10px] font-bold select-none leading-none">
+            <span className="text-neutral-555 dark:text-neutral-455 uppercase tracking-wider text-[9px]">Completion Rate</span>
+            <span className="font-mono text-amber-700 dark:text-amber-400 font-bold">{nuniCompStats.percent}% ({nuniCompStats.completed}/{nuniCompStats.total})</span>
+          </div>
+          <div className="w-full h-1 bg-neutral-100 dark:bg-neutral-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${nuniCompStats.percent}%` }}
+              transition={{ duration: 0.5, ease: 'easeOut' }}
+              className="h-full bg-amber-500 dark:bg-amber-600 rounded-full"
+            />
+          </div>
         </div>
         <div className="p-4 flex-1 space-y-3.5 overflow-y-auto max-h-[400px]">
           <AnimatePresence mode="popLayout">

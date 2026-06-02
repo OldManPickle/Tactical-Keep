@@ -21,6 +21,73 @@ export default function TaskForm({ onAddTask, onCancel }: TaskFormProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
+
+  // Check Web Speech API support
+  const SpeechRecognitionSupported = typeof window !== 'undefined' && 
+    (!!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition);
+
+  useEffect(() => {
+    if (!SpeechRecognitionSupported) return;
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRec();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event);
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const current = event.resultIndex;
+      const transcript = event.results[current][0].transcript;
+      if (transcript) {
+        setDescription((prev) => {
+          const trimmedPrev = prev.trim();
+          return trimmedPrev ? `${trimmedPrev} ${transcript.trim()}` : transcript.trim();
+        });
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [SpeechRecognitionSupported]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        console.error('Failed to start speech recognition', e);
+      }
+    }
+  };
+
   const [quadrant, setQuadrant] = useState<QuadrantType>('urgent-important');
   const [selectedColor, setSelectedColor] = useState('DEFAULT'); // Matches index or key in COLOR_OPTIONS
   const [reminder, setReminder] = useState('');
@@ -138,15 +205,38 @@ export default function TaskForm({ onAddTask, onCancel }: TaskFormProps) {
                 className="mt-4 pt-3 border-t border-neutral-200/50 dark:border-neutral-800/50 space-y-4"
               >
                 {/* Description Textarea */}
-                <div>
+                <div className="relative">
                   <textarea
                     id="task_desc_input"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Description or notes..."
+                    placeholder={
+                      SpeechRecognitionSupported 
+                        ? "Description or notes... (click the microphone to dictate)" 
+                        : "Description or notes..."
+                    }
                     rows={2}
-                    className="w-full bg-transparent focus:outline-hidden text-sm text-neutral-700 dark:text-neutral-300 resize-none"
+                    className="w-full bg-transparent focus:outline-hidden text-sm text-neutral-700 dark:text-neutral-300 resize-none pr-10"
                   />
+                  {SpeechRecognitionSupported && (
+                    <button
+                      type="button"
+                      id="voice_dictate_btn"
+                      onClick={toggleListening}
+                      title={isListening ? "Stop voice dictation" : "Dictate task description"}
+                      className={`absolute right-1 bottom-1 p-2 rounded-full transition-all duration-150 active:scale-90 flex items-center justify-center cursor-pointer ${
+                        isListening
+                          ? 'bg-red-500 hover:bg-red-650 text-white animate-pulse shadow-xs'
+                          : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-neutral-100 dark:hover:bg-neutral-800'
+                      }`}
+                    >
+                      {isListening ? (
+                        <Icons.MicOff className="h-4 w-4" />
+                      ) : (
+                        <Icons.Mic className="h-4 w-4" />
+                      )}
+                    </button>
+                  )}
                 </div>
 
                 {/* Eisenhower Quadrant Grid - 2x2 Selector */}

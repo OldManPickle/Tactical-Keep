@@ -173,15 +173,7 @@ export default function CalendarGrid({
                   </span>
                 </div>
 
-                {/* Add standard task specifically onto this day */}
-                <button
-                  onClick={() => onAddTaskToDay(dateStr)}
-                  id={`add_task_day_${dateStr}`}
-                  title="Schedule task here"
-                  className="rounded-md p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 hover:text-neutral-800 dark:hover:text-neutral-100 text-neutral-400 animate-pulse"
-                >
-                  <Icons.Plus className="h-3.5 w-3.5" />
-                </button>
+
               </div>
 
               {/* Day Tasks Stack */}

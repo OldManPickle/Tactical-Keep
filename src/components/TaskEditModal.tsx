@@ -19,6 +19,72 @@ export default function TaskEditModal({
 }: TaskEditModalProps) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description);
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = React.useRef<any>(null);
+
+  // Check Web Speech API support
+  const SpeechRecognitionSupported = typeof window !== 'undefined' && 
+    (!!(window as any).SpeechRecognition || !!(window as any).webkitSpeechRecognition);
+
+  React.useEffect(() => {
+    if (!SpeechRecognitionSupported) return;
+
+    const SpeechRec = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRec();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error('Speech recognition error', event);
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event: any) => {
+      const current = event.resultIndex;
+      const transcript = event.results[current][0].transcript;
+      if (transcript) {
+        setDescription((prev) => {
+          const trimmedPrev = prev.trim();
+          return trimmedPrev ? `${trimmedPrev} ${transcript.trim()}` : transcript.trim();
+        });
+      }
+    };
+
+    recognitionRef.current = recognition;
+
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, [SpeechRecognitionSupported]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) return;
+
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      try {
+        recognitionRef.current.start();
+      } catch (e) {
+        console.error('Failed to start speech recognition', e);
+      }
+    }
+  };
   const [quadrant, setQuadrant] = useState<QuadrantType>(task.quadrant);
   const [color, setColor] = useState(task.color.toUpperCase());
   const [reminder, setReminder] = useState(
@@ -134,17 +200,40 @@ export default function TaskEditModal({
           </div>
 
           {/* Description/Note - Borderless/Clean */}
-          <div>
+          <div className="relative group/desc">
             <textarea
-              placeholder="Note"
+              placeholder={
+                SpeechRecognitionSupported 
+                  ? "Note (click the microphone to dictate)" 
+                  : "Note"
+              }
               id="edit_desc_input"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={4}
-              className={`w-full bg-transparent border-none placeholder-neutral-450 dark:placeholder-neutral-550 text-sm focus:outline-hidden focus:ring-0 p-0 resize-none min-h-[100px] transition-opacity duration-300 ${
+              className={`w-full bg-transparent border-none placeholder-neutral-450 dark:placeholder-neutral-550 text-sm focus:outline-hidden focus:ring-0 p-0 pr-10 resize-none min-h-[100px] transition-opacity duration-300 ${
                 completed ? 'line-through opacity-45' : ''
               }`}
             />
+            {SpeechRecognitionSupported && !completed && (
+              <button
+                type="button"
+                id="edit_voice_dictate_btn"
+                onClick={toggleListening}
+                title={isListening ? "Stop voice dictation" : "Dictate description note"}
+                className={`absolute right-1 bottom-1 p-2 rounded-full transition-all duration-150 active:scale-90 flex items-center justify-center cursor-pointer ${
+                  isListening
+                    ? 'bg-red-500 hover:bg-red-650 text-white animate-pulse shadow-xs'
+                    : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/5'
+                }`}
+              >
+                {isListening ? (
+                  <Icons.MicOff className="h-4 w-4" />
+                ) : (
+                  <Icons.Mic className="h-4 w-4" />
+                )}
+              </button>
+            )}
           </div>
 
           {/* Labels Row / Saved Badges */}
